@@ -5,6 +5,15 @@ import { Html, Sky, useGLTF, useTexture } from '@react-three/drei'
 import {
   BvhPhysicsBody,
   IdleAnimationUrl,
+  JumpAction,
+  KeyboardLocomotionActionBindings,
+  MoveBackwardAction,
+  MoveForwardAction,
+  MoveLeftAction,
+  MoveRightAction,
+  RotatePitchAction,
+  RotateYawAction,
+  RunAction,
   SimpleCharacter,
   useCharacterAnimationLoader,
   useCharacterModelLoader,
@@ -58,75 +67,61 @@ const FEATURE_LINK_POSITION: [number, number, number] = [-6.05, 1.04, 3.58]
 
 type SceneMesh = Mesh & Object3D & { isMesh?: boolean }
 type MobilePadThumb = { x: number; y: number }
+type MobilePadInput = { x: number; y: number }
+type ActiveTouchLook = { pointerId: number; x: number; y: number }
 
-type MobileMoveDirection = '' | 'back' | 'forward'
-
-type MobileTurnDirection = '' | 'left' | 'right'
+const MOBILE_MOVE_DEAD_ZONE = 0.08
+const MOBILE_RUN_THRESHOLD = 0.82
+const MOBILE_TURN_HORIZONTAL_SENSITIVITY = 4.0
+const MOBILE_TURN_VERTICAL_SENSITIVITY = 3.0
+const MOBILE_DRAG_ROTATION_MULTIPLIER = 4.5
+const MOBILE_DRAG_YAW_PER_PIXEL = 0.0024 * MOBILE_DRAG_ROTATION_MULTIPLIER
+const MOBILE_DRAG_PITCH_PER_PIXEL = 0.0018 * MOBILE_DRAG_ROTATION_MULTIPLIER
 
 function MobileControls({
   visible,
   onMoveChange,
-  onTurnChange,
+  onLookChange,
   onJump,
 }: {
   visible: boolean
-  onMoveChange: (direction: MobileMoveDirection) => void
-  onTurnChange: (direction: MobileTurnDirection) => void
+  onMoveChange: (input: MobilePadInput) => void
+  onLookChange: (input: MobilePadInput) => void
   onJump: () => void
 }) {
   const [moveThumb, setMoveThumb] = useState<MobilePadThumb>({ x: 0, y: 0 })
-  const [turnThumb, setTurnThumb] = useState<MobilePadThumb>({ x: 0, y: 0 })
+  const [lookThumb, setLookThumb] = useState<MobilePadThumb>({ x: 0, y: 0 })
   const movePointerRef = useRef<number | null>(null)
-  const turnPointerRef = useRef<number | null>(null)
+  const lookPointerRef = useRef<number | null>(null)
 
-  const updateMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const updatePad = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    setThumb: (thumb: MobilePadThumb) => void,
+    onChange: (input: MobilePadInput) => void,
+  ) => {
     const bounds = event.currentTarget.getBoundingClientRect()
-    const radius = bounds.width * 0.34
+    const radius = Math.max(bounds.width * 0.34, 1)
     const localX = event.clientX - (bounds.left + bounds.width / 2)
     const localY = event.clientY - (bounds.top + bounds.height / 2)
     const distance = Math.hypot(localX, localY)
     const scale = distance > radius ? radius / distance : 1
     const x = localX * scale
     const y = localY * scale
-    setMoveThumb({ x, y })
 
-    if (Math.abs(y) < 10) {
-      onMoveChange('')
-      return
-    }
-
-    onMoveChange(y < 0 ? 'forward' : 'back')
-  }
-
-  const updateTurn = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const radius = bounds.width * 0.34
-    const localX = event.clientX - (bounds.left + bounds.width / 2)
-    const localY = event.clientY - (bounds.top + bounds.height / 2)
-    const distance = Math.hypot(localX, localY)
-    const scale = distance > radius ? radius / distance : 1
-    const x = localX * scale
-    const y = localY * scale
-    setTurnThumb({ x, y })
-
-    if (Math.abs(x) < 10) {
-      onTurnChange('')
-      return
-    }
-
-    onTurnChange(x < 0 ? 'left' : 'right')
+    setThumb({ x, y })
+    onChange({ x: x / radius, y: y / radius })
   }
 
   const resetMove = () => {
     movePointerRef.current = null
     setMoveThumb({ x: 0, y: 0 })
-    onMoveChange('')
+    onMoveChange({ x: 0, y: 0 })
   }
 
-  const resetTurn = () => {
-    turnPointerRef.current = null
-    setTurnThumb({ x: 0, y: 0 })
-    onTurnChange('')
+  const resetLook = () => {
+    lookPointerRef.current = null
+    setLookThumb({ x: 0, y: 0 })
+    onLookChange({ x: 0, y: 0 })
   }
 
   if (!visible) {
@@ -138,20 +133,25 @@ function MobileControls({
       <div
         className="joystick-pad"
         onPointerDown={(event) => {
+          event.preventDefault()
           movePointerRef.current = event.pointerId
           event.currentTarget.setPointerCapture(event.pointerId)
-          updateMove(event)
+          updatePad(event, setMoveThumb, onMoveChange)
         }}
         onPointerMove={(event) => {
           if (movePointerRef.current === event.pointerId) {
-            updateMove(event)
+            event.preventDefault()
+            updatePad(event, setMoveThumb, onMoveChange)
           }
         }}
         onPointerUp={(event) => {
-          if (movePointerRef.current === event.pointerId) resetMove()
+          if (movePointerRef.current === event.pointerId) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+            resetMove()
+          }
         }}
-        onPointerCancel={(event) => {
-          if (movePointerRef.current === event.pointerId) resetMove()
+        onPointerCancel={() => {
+          resetMove()
         }}
       >
         <div className="joystick-label">Move</div>
@@ -162,7 +162,7 @@ function MobileControls({
         className="mobile-jump-button"
         type="button"
         onPointerDown={(event) => {
-          event.preventDefault() // prevent double firing with click
+          event.preventDefault()
           onJump()
         }}
       >
@@ -172,24 +172,29 @@ function MobileControls({
       <div
         className="joystick-pad"
         onPointerDown={(event) => {
-          turnPointerRef.current = event.pointerId
+          event.preventDefault()
+          lookPointerRef.current = event.pointerId
           event.currentTarget.setPointerCapture(event.pointerId)
-          updateTurn(event)
+          updatePad(event, setLookThumb, onLookChange)
         }}
         onPointerMove={(event) => {
-          if (turnPointerRef.current === event.pointerId) {
-            updateTurn(event)
+          if (lookPointerRef.current === event.pointerId) {
+            event.preventDefault()
+            updatePad(event, setLookThumb, onLookChange)
           }
         }}
         onPointerUp={(event) => {
-          if (turnPointerRef.current === event.pointerId) resetTurn()
+          if (lookPointerRef.current === event.pointerId) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+            resetLook()
+          }
         }}
-        onPointerCancel={(event) => {
-          if (turnPointerRef.current === event.pointerId) resetTurn()
+        onPointerCancel={() => {
+          resetLook()
         }}
       >
         <div className="joystick-label">Turn</div>
-        <div className="joystick-thumb" style={{ transform: `translate(${turnThumb.x}px, ${turnThumb.y}px)` }} />
+        <div className="joystick-thumb" style={{ transform: `translate(${lookThumb.x}px, ${lookThumb.y}px)` }} />
       </div>
     </div>
   )
@@ -1093,6 +1098,14 @@ function restoreSceneControls(target?: HTMLElement | null) {
   window.focus()
 }
 
+function isTouchInputDevice() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches
+}
+
 function PixidimworldPanel({
   open,
   onClose,
@@ -1100,19 +1113,25 @@ function PixidimworldPanel({
   open: boolean
   onClose: () => void
 }) {
+  if (!open) {
+    return null
+  }
+
   return (
-    <aside className={`feature-panel${open ? ' feature-panel-open' : ''}`} aria-hidden={!open}>
-      <button className="feature-panel-close" type="button" onClick={onClose}>
-        x
-      </button>
-      <div className="feature-panel-layout">
-        <p className="feature-panel-topic">Pixidimworld</p>
-        <h2 className="feature-panel-title">Who Is Pixidimworld And What Do We Create</h2>
-        <p className="feature-panel-lead">I am the co owner, a creative frontend dev plus a 3d web designer.</p>
-        <p className="feature-panel-copy feature-panel-copy-left">I work based on collaborations and teams.</p>
-        <p className="feature-panel-copy feature-panel-copy-right">I make websites that are creative, unique, and arranged like art instead of the usual ordinary layouts. Pixidimworld is known for 3D websites and animations.</p>
-      </div>
-    </aside>
+    <div className="feature-panel-backdrop" data-no-global-dismiss="true">
+      <aside className="feature-panel" role="dialog" aria-modal="true" aria-labelledby="pixidimworld-panel-title">
+        <button className="feature-panel-close" type="button" aria-label="Close Pixidimworld details" onClick={onClose}>
+          x
+        </button>
+        <div className="feature-panel-layout">
+          <p className="feature-panel-topic">Pixidimworld</p>
+          <h2 className="feature-panel-title" id="pixidimworld-panel-title">Who Is Pixidimworld And What Do We Create</h2>
+          <p className="feature-panel-lead">I am the co owner, a creative frontend dev plus a 3d web designer.</p>
+          <p className="feature-panel-copy feature-panel-copy-left">I work based on collaborations and teams.</p>
+          <p className="feature-panel-copy feature-panel-copy-right">I make websites that are creative, unique, and arranged like art instead of the usual ordinary layouts. Pixidimworld is known for 3D websites and animations.</p>
+        </div>
+      </aside>
+    </div>
   )
 }
 
@@ -1125,7 +1144,7 @@ export default function App() {
   const [showPixidimworldPanel, setShowPixidimworldPanel] = useState(false)
   const [musicEnabled, setMusicEnabled] = useState(true)
   const [needsMusicResume, setNeedsMusicResume] = useState(false)
-  const [isTouchDevice, setIsTouchDevice] = useState(false)
+  const [isTouchDevice, setIsTouchDevice] = useState(isTouchInputDevice)
 
   const sceneCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const bgMusicRef = useRef<HTMLAudioElement | null>(null)
@@ -1134,22 +1153,229 @@ export default function App() {
   const footRunRef = useRef<HTMLAudioElement | null>(null)
   const jumpAudioRef = useRef<HTMLAudioElement | null>(null)
   const audioPrimedRef = useRef(false)
-  const virtualKeysRef = useRef<Set<string>>(new Set())
   const pressedKeysRef = useRef<Set<string>>(new Set())
   const footstepFrameRef = useRef<number | null>(null)
   const lastStepAtRef = useRef(0)
   const lastJumpAtRef = useRef(0)
+  const movementWritersRef = useRef<null | {
+    forward: ReturnType<typeof MoveForwardAction.createWriter>
+    backward: ReturnType<typeof MoveBackwardAction.createWriter>
+    left: ReturnType<typeof MoveLeftAction.createWriter>
+    right: ReturnType<typeof MoveRightAction.createWriter>
+    run: ReturnType<typeof RunAction.createWriter>
+  }>(null)
+  const mobileMoveInputRef = useRef<MobilePadInput>({ x: 0, y: 0 })
+  const mobileLookInputRef = useRef<MobilePadInput>({ x: 0, y: 0 })
+  const mobileMoveMagnitudeRef = useRef(0)
+  const mobileRunRef = useRef(false)
+  const activeTouchLookRef = useRef<ActiveTouchLook | null>(null)
+  const touchLookDeltaRef = useRef<MobilePadInput>({ x: 0, y: 0 })
+  const interactionEnabledRef = useRef(false)
+
+  const normalizeMobileAxis = (value: number) => (Math.abs(value) < MOBILE_MOVE_DEAD_ZONE ? 0 : MathUtils.clamp(value, -1, 1))
+
+  const applyMobileMove = (input: MobilePadInput) => {
+    const x = normalizeMobileAxis(input.x)
+    const y = normalizeMobileAxis(input.y)
+    const forward = y < 0 ? -y : 0
+    const backward = y > 0 ? y : 0
+    const left = x < 0 ? -x : 0
+    const right = x > 0 ? x : 0
+    const magnitude = Math.min(1, Math.hypot(x, y))
+    const shouldRun = magnitude >= MOBILE_RUN_THRESHOLD
+    const writers = movementWritersRef.current
+
+    mobileMoveInputRef.current = { x, y }
+    mobileMoveMagnitudeRef.current = magnitude
+    mobileRunRef.current = shouldRun
+
+    writers?.forward.write(forward)
+    writers?.backward.write(backward)
+    writers?.left.write(left)
+    writers?.right.write(right)
+    writers?.run.write(shouldRun)
+  }
+
+  const applyMobileLook = (input: MobilePadInput) => {
+    mobileLookInputRef.current = {
+      x: normalizeMobileAxis(input.x),
+      y: normalizeMobileAxis(input.y),
+    }
+  }
+
+  const resetTouchLookDrag = () => {
+    activeTouchLookRef.current = null
+    touchLookDeltaRef.current = { x: 0, y: 0 }
+  }
+
+  const clearMobileInput = () => {
+    applyMobileMove({ x: 0, y: 0 })
+    applyMobileLook({ x: 0, y: 0 })
+    resetTouchLookDrag()
+  }
 
   const restorePlayerControls = () => {
     pressedKeysRef.current.clear()
+    clearMobileInput()
     requestAnimationFrame(() => restoreSceneControls(sceneCanvasRef.current))
   }
 
   useEffect(() => {
-    const handleTouch = () => setIsTouchDevice(true)
-    window.addEventListener('touchstart', handleTouch, { once: true })
-    return () => window.removeEventListener('touchstart', handleTouch)
+    const updateTouchMode = () => setIsTouchDevice(isTouchInputDevice())
+    const coarsePointerQuery = window.matchMedia('(pointer: coarse)')
+    updateTouchMode()
+
+    const handleFirstTouch = () => updateTouchMode()
+    window.addEventListener('touchstart', handleFirstTouch, { once: true, passive: true })
+    coarsePointerQuery.addEventListener?.('change', updateTouchMode)
+
+    return () => {
+      window.removeEventListener('touchstart', handleFirstTouch)
+      coarsePointerQuery.removeEventListener?.('change', updateTouchMode)
+    }
   }, [])
+
+  useEffect(() => {
+    const abortController = new AbortController()
+    movementWritersRef.current = {
+      forward: MoveForwardAction.createWriter(abortController.signal),
+      backward: MoveBackwardAction.createWriter(abortController.signal),
+      left: MoveLeftAction.createWriter(abortController.signal),
+      right: MoveRightAction.createWriter(abortController.signal),
+      run: RunAction.createWriter(abortController.signal),
+    }
+    clearMobileInput()
+
+    JumpAction.subscribe(
+      () => {
+        if (!interactionEnabledRef.current) {
+          return
+        }
+
+        const now = performance.now()
+        if (now - lastJumpAtRef.current <= 420) {
+          return
+        }
+
+        const jumpAudio = jumpAudioRef.current
+        if (jumpAudio != null) {
+          jumpAudio.currentTime = 0
+          void jumpAudio.play().catch(() => {})
+        }
+
+        lastJumpAtRef.current = now
+      },
+      { signal: abortController.signal },
+    )
+
+    return () => {
+      clearMobileInput()
+      movementWritersRef.current = null
+      abortController.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    let frameId = 0
+    let previousTime = performance.now()
+
+    const tick = (now: number) => {
+      const deltaSeconds = Math.min((now - previousTime) / 1000, 0.05)
+      previousTime = now
+
+      if (interactionEnabledRef.current) {
+        const look = mobileLookInputRef.current
+        if (look.x !== 0) {
+          RotateYawAction.emit(-look.x * MOBILE_TURN_HORIZONTAL_SENSITIVITY * deltaSeconds)
+        }
+        if (look.y !== 0) {
+          RotatePitchAction.emit(-look.y * MOBILE_TURN_VERTICAL_SENSITIVITY * deltaSeconds)
+        }
+
+        const touchDrag = touchLookDeltaRef.current
+        if (touchDrag.x !== 0 || touchDrag.y !== 0) {
+          RotateYawAction.emit(-touchDrag.x * MOBILE_DRAG_YAW_PER_PIXEL)
+          RotatePitchAction.emit(-touchDrag.y * MOBILE_DRAG_PITCH_PER_PIXEL)
+          touchLookDeltaRef.current = { x: 0, y: 0 }
+        }
+      }
+
+      frameId = window.requestAnimationFrame(tick)
+    }
+
+    frameId = window.requestAnimationFrame((now) => {
+      previousTime = now
+      tick(now)
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [])
+
+  useEffect(() => {
+    const canvas = sceneCanvasRef.current
+    if (canvas == null) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch' || !interactionEnabledRef.current) {
+        return
+      }
+
+      activeTouchLookRef.current = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+      }
+      touchLookDeltaRef.current = { x: 0, y: 0 }
+      canvas.setPointerCapture(event.pointerId)
+
+      if (sceneEntered && musicEnabled && needsMusicResume && !document.hidden) {
+        void startBackgroundMusic()
+      }
+
+      event.preventDefault()
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const activeTouchLook = activeTouchLookRef.current
+      if (event.pointerType !== 'touch' || activeTouchLook == null || activeTouchLook.pointerId !== event.pointerId) {
+        return
+      }
+
+      touchLookDeltaRef.current = {
+        x: touchLookDeltaRef.current.x + (event.clientX - activeTouchLook.x),
+        y: touchLookDeltaRef.current.y + (event.clientY - activeTouchLook.y),
+      }
+      activeTouchLook.x = event.clientX
+      activeTouchLook.y = event.clientY
+      event.preventDefault()
+    }
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      const activeTouchLook = activeTouchLookRef.current
+      if (activeTouchLook == null || activeTouchLook.pointerId !== event.pointerId) {
+        return
+      }
+
+      if (canvas.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId)
+      }
+      resetTouchLookDrag()
+    }
+
+    canvas.addEventListener('pointerdown', handlePointerDown, { passive: false })
+    canvas.addEventListener('pointermove', handlePointerMove, { passive: false })
+    canvas.addEventListener('pointerup', handlePointerEnd)
+    canvas.addEventListener('pointercancel', handlePointerEnd)
+
+    return () => {
+      canvas.removeEventListener('pointerdown', handlePointerDown)
+      canvas.removeEventListener('pointermove', handlePointerMove)
+      canvas.removeEventListener('pointerup', handlePointerEnd)
+      canvas.removeEventListener('pointercancel', handlePointerEnd)
+    }
+  }, [needsMusicResume, musicEnabled, sceneEntered])
 
   useEffect(() => {
     const bgMusic = new Audio(bgMusicUrl)
@@ -1251,6 +1477,17 @@ export default function App() {
     }
   }
 
+  const interactionEnabled = sceneEntered && !showHelpCard && !showPixidimworldPanel
+
+  useEffect(() => {
+    interactionEnabledRef.current = interactionEnabled
+
+    if (!interactionEnabled) {
+      pressedKeysRef.current.clear()
+      clearMobileInput()
+    }
+  }, [interactionEnabled])
+
   useEffect(() => {
     const stopFootsteps = () => {
       const footWalk = footWalkRef.current
@@ -1272,8 +1509,10 @@ export default function App() {
 
     const footstepLoop = (now: number) => {
       const activeKeys = pressedKeysRef.current
-      const isMoving = Array.from(activeKeys).some(isMoveKey)
-      const isRunning = isMoving && activeKeys.has('shift')
+      const keyboardMoving = Array.from(activeKeys).some(isMoveKey)
+      const touchMoving = mobileMoveMagnitudeRef.current > MOBILE_MOVE_DEAD_ZONE
+      const isMoving = keyboardMoving || touchMoving
+      const isRunning = (keyboardMoving && activeKeys.has('shift')) || mobileRunRef.current
       const uiBlockingMovement = !sceneEntered || showHelpCard || showPixidimworldPanel
 
       if (!uiBlockingMovement && !document.hidden && isMoving) {
@@ -1305,18 +1544,6 @@ export default function App() {
       if (sceneEntered && musicEnabled && needsMusicResume && !document.hidden) {
         void startBackgroundMusic()
       }
-
-      if ((key === ' ' || key === 'space' || key === 'spacebar') && !event.repeat && sceneEntered && !showHelpCard && !showPixidimworldPanel) {
-        const now = performance.now()
-        if (now - lastJumpAtRef.current > 420) {
-          const jumpAudio = jumpAudioRef.current
-          if (jumpAudio != null) {
-            jumpAudio.currentTime = 0
-            void jumpAudio.play().catch(() => {})
-          }
-          lastJumpAtRef.current = now
-        }
-      }
     }
 
     const onKeyUp = (event: KeyboardEvent) => {
@@ -1334,12 +1561,14 @@ export default function App() {
         bgMusicRef.current?.pause()
         setNeedsMusicResume(sceneEntered && musicEnabled)
         pressedKeysRef.current.clear()
+        clearMobileInput()
         stopFootsteps()
       }
     }
 
     const onWindowBlur = () => {
       pressedKeysRef.current.clear()
+      clearMobileInput()
       stopFootsteps()
     }
 
@@ -1396,6 +1625,7 @@ export default function App() {
     playClickSound()
     setShowHelpCard(false)
     setShowPixidimworldPanel(true)
+    restorePlayerControls()
   }
 
   const handleClosePixidimworldPanel = () => {
@@ -1435,8 +1665,8 @@ export default function App() {
             x
           </button>
           <h2>Maze Gallery</h2>
-          <p>This is a maze art gallery made and drawn by Donald Imhanwa, owner of  Pixidimworld Studios.</p>
-          <p>Use W, A, S, D  and hold Shift while moving to run.</p>
+          <p>This is a maze art gallery made and drawn by Donald Imhanwa, owner of Pixidimworld Studios.</p>
+          <p>Use W, A, S, D and hold Shift while moving to run.</p>
           <p>Follow the single floating link marker near the Pixidimworld wall to open the studio story panel.</p>
         </div>
       ) : null}
@@ -1455,6 +1685,7 @@ export default function App() {
             playClickSound()
             setShowPixidimworldPanel(false)
             setShowHelpCard(true)
+            restorePlayerControls()
           }}
         >
           ?
@@ -1486,57 +1717,19 @@ export default function App() {
       </div>
 
       <MobileControls
-        visible={hasLoaded && sceneEntered && isTouchDevice}
-        onMoveChange={(dir) => {
-          const dispatch = (type: 'keydown' | 'keyup', key: string, code: string) => {
-            const event = new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true })
-            document.dispatchEvent(event)
-            window.dispatchEvent(event)
-          };
-          ['w', 's'].forEach((k) => {
-            dispatch('keyup', k, `Key${k.toUpperCase()}`)
-            pressedKeysRef.current.delete(k)
-          })
-          if (dir === 'forward') {
-            dispatch('keydown', 'w', 'KeyW')
-            pressedKeysRef.current.add('w')
-          }
-          if (dir === 'back') {
-            dispatch('keydown', 's', 'KeyS')
-            pressedKeysRef.current.add('s')
-          }
-        }}
-        onTurnChange={(dir) => {
-          const dispatch = (type: 'keydown' | 'keyup', key: string, code: string) => {
-            const event = new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true })
-            document.dispatchEvent(event)
-            window.dispatchEvent(event)
-          };
-          ['a', 'd'].forEach((k) => {
-            dispatch('keyup', k, `Key${k.toUpperCase()}`)
-            pressedKeysRef.current.delete(k)
-          })
-          if (dir === 'left') {
-            dispatch('keydown', 'a', 'KeyA')
-            pressedKeysRef.current.add('a')
-          }
-          if (dir === 'right') {
-            dispatch('keydown', 'd', 'KeyD')
-            pressedKeysRef.current.add('d')
-          }
-        }}
+        visible={hasLoaded && sceneEntered && isTouchDevice && !showHelpCard && !showPixidimworldPanel}
+        onMoveChange={applyMobileMove}
+        onLookChange={applyMobileLook}
         onJump={() => {
-          const dispatch = (type: 'keydown' | 'keyup', key: string, code: string) => {
-            const event = new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true })
-            document.dispatchEvent(event)
-            window.dispatchEvent(event)
-          };
-          dispatch('keydown', ' ', 'Space')
-          pressedKeysRef.current.add(' ')
-          setTimeout(() => {
-            dispatch('keyup', ' ', 'Space')
-            pressedKeysRef.current.delete(' ')
-          }, 100)
+          if (!interactionEnabledRef.current) {
+            return
+          }
+
+          if (sceneEntered && musicEnabled && needsMusicResume && !document.hidden) {
+            void startBackgroundMusic()
+          }
+
+          JumpAction.emit(undefined)
         }}
       />
 
@@ -1548,6 +1741,7 @@ export default function App() {
           onCreated={({ gl }) => {
             sceneCanvasRef.current = gl.domElement
             gl.domElement.tabIndex = 0
+            gl.domElement.style.touchAction = 'none'
           }}
         >
           <Suspense fallback={<Loader />}>
@@ -1571,6 +1765,7 @@ export default function App() {
               />
 
               <SimpleCharacter
+                actionBindings={isTouchDevice ? [KeyboardLocomotionActionBindings] : undefined}
                 position={playerSpawn}
                 rotation={playerRotation}
                 useViverseAvatar={false}
