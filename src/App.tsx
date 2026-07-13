@@ -1125,6 +1125,12 @@ export default function App() {
   }
 
   useEffect(() => {
+    const handleTouch = () => setIsTouchDevice(true)
+    window.addEventListener('touchstart', handleTouch, { once: true })
+    return () => window.removeEventListener('touchstart', handleTouch)
+  }, [])
+
+  useEffect(() => {
     const bgMusic = new Audio(bgMusicUrl)
     bgMusic.loop = true
     bgMusic.volume = 0.4
@@ -1172,24 +1178,26 @@ export default function App() {
       jumpAudioRef.current,
     ]
 
-    for (const audio of audioList) {
-      if (audio == null) {
-        continue
-      }
+    await Promise.all(
+      audioList.map(async (audio) => {
+        if (audio == null) {
+          return
+        }
 
-      const originalVolume = audio.volume
-      try {
-        audio.volume = 0
-        audio.currentTime = 0
-        await audio.play()
-        audio.pause()
-        audio.currentTime = 0
-      } catch {
-        // Ignore unlock failures and let normal playback retry later.
-      } finally {
-        audio.volume = originalVolume
-      }
-    }
+        const originalVolume = audio.volume
+        try {
+          audio.volume = 0
+          audio.currentTime = 0
+          await audio.play()
+          audio.pause()
+          audio.currentTime = 0
+        } catch {
+          // Ignore unlock failures and let normal playback retry later.
+        } finally {
+          audio.volume = originalVolume
+        }
+      })
+    )
 
     audioPrimedRef.current = true
   }
@@ -1455,6 +1463,46 @@ export default function App() {
           Ctrl
         </button>
       </div>
+
+      <MobileControls
+        visible={hasLoaded && sceneEntered && isTouchDevice}
+        onMoveChange={(dir) => {
+          ['w', 's'].forEach((k) => {
+            window.dispatchEvent(new KeyboardEvent('keyup', { key: k, code: `Key${k.toUpperCase()}` }))
+            pressedKeysRef.current.delete(k)
+          })
+          if (dir === 'forward') {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }))
+            pressedKeysRef.current.add('w')
+          }
+          if (dir === 'back') {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS' }))
+            pressedKeysRef.current.add('s')
+          }
+        }}
+        onTurnChange={(dir) => {
+          ['a', 'd'].forEach((k) => {
+            window.dispatchEvent(new KeyboardEvent('keyup', { key: k, code: `Key${k.toUpperCase()}` }))
+            pressedKeysRef.current.delete(k)
+          })
+          if (dir === 'left') {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA' }))
+            pressedKeysRef.current.add('a')
+          }
+          if (dir === 'right') {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', code: 'KeyD' }))
+            pressedKeysRef.current.add('d')
+          }
+        }}
+        onJump={() => {
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }))
+          pressedKeysRef.current.add(' ')
+          setTimeout(() => {
+            window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }))
+            pressedKeysRef.current.delete(' ')
+          }, 100)
+        }}
+      />
 
       <div className={`scene-shell${hasLoaded && !sceneEntered ? ' scene-shell-blur' : ''}`}>
         <Canvas
