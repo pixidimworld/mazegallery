@@ -76,6 +76,8 @@ function MobileControls({
 }) {
   const [moveThumb, setMoveThumb] = useState<MobilePadThumb>({ x: 0, y: 0 })
   const [turnThumb, setTurnThumb] = useState<MobilePadThumb>({ x: 0, y: 0 })
+  const movePointerRef = useRef<number | null>(null)
+  const turnPointerRef = useRef<number | null>(null)
 
   const updateMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect()
@@ -116,11 +118,13 @@ function MobileControls({
   }
 
   const resetMove = () => {
+    movePointerRef.current = null
     setMoveThumb({ x: 0, y: 0 })
     onMoveChange('')
   }
 
   const resetTurn = () => {
+    turnPointerRef.current = null
     setTurnThumb({ x: 0, y: 0 })
     onTurnChange('')
   }
@@ -134,38 +138,55 @@ function MobileControls({
       <div
         className="joystick-pad"
         onPointerDown={(event) => {
+          movePointerRef.current = event.pointerId
           event.currentTarget.setPointerCapture(event.pointerId)
           updateMove(event)
         }}
         onPointerMove={(event) => {
-          if (event.buttons !== 0) {
+          if (movePointerRef.current === event.pointerId) {
             updateMove(event)
           }
         }}
-        onPointerUp={resetMove}
-        onPointerCancel={resetMove}
+        onPointerUp={(event) => {
+          if (movePointerRef.current === event.pointerId) resetMove()
+        }}
+        onPointerCancel={(event) => {
+          if (movePointerRef.current === event.pointerId) resetMove()
+        }}
       >
         <div className="joystick-label">Move</div>
         <div className="joystick-thumb" style={{ transform: `translate(${moveThumb.x}px, ${moveThumb.y}px)` }} />
       </div>
 
-      <button className="mobile-jump-button" type="button" onClick={onJump}>
+      <button
+        className="mobile-jump-button"
+        type="button"
+        onPointerDown={(event) => {
+          event.preventDefault() // prevent double firing with click
+          onJump()
+        }}
+      >
         Jump
       </button>
 
       <div
         className="joystick-pad"
         onPointerDown={(event) => {
+          turnPointerRef.current = event.pointerId
           event.currentTarget.setPointerCapture(event.pointerId)
           updateTurn(event)
         }}
         onPointerMove={(event) => {
-          if (event.buttons !== 0) {
+          if (turnPointerRef.current === event.pointerId) {
             updateTurn(event)
           }
         }}
-        onPointerUp={resetTurn}
-        onPointerCancel={resetTurn}
+        onPointerUp={(event) => {
+          if (turnPointerRef.current === event.pointerId) resetTurn()
+        }}
+        onPointerCancel={(event) => {
+          if (turnPointerRef.current === event.pointerId) resetTurn()
+        }}
       >
         <div className="joystick-label">Turn</div>
         <div className="joystick-thumb" style={{ transform: `translate(${turnThumb.x}px, ${turnThumb.y}px)` }} />
@@ -1467,38 +1488,53 @@ export default function App() {
       <MobileControls
         visible={hasLoaded && sceneEntered && isTouchDevice}
         onMoveChange={(dir) => {
+          const dispatch = (type: 'keydown' | 'keyup', key: string, code: string) => {
+            const event = new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true })
+            document.dispatchEvent(event)
+            window.dispatchEvent(event)
+          };
           ['w', 's'].forEach((k) => {
-            window.dispatchEvent(new KeyboardEvent('keyup', { key: k, code: `Key${k.toUpperCase()}` }))
+            dispatch('keyup', k, `Key${k.toUpperCase()}`)
             pressedKeysRef.current.delete(k)
           })
           if (dir === 'forward') {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW' }))
+            dispatch('keydown', 'w', 'KeyW')
             pressedKeysRef.current.add('w')
           }
           if (dir === 'back') {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS' }))
+            dispatch('keydown', 's', 'KeyS')
             pressedKeysRef.current.add('s')
           }
         }}
         onTurnChange={(dir) => {
+          const dispatch = (type: 'keydown' | 'keyup', key: string, code: string) => {
+            const event = new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true })
+            document.dispatchEvent(event)
+            window.dispatchEvent(event)
+          };
           ['a', 'd'].forEach((k) => {
-            window.dispatchEvent(new KeyboardEvent('keyup', { key: k, code: `Key${k.toUpperCase()}` }))
+            dispatch('keyup', k, `Key${k.toUpperCase()}`)
             pressedKeysRef.current.delete(k)
           })
           if (dir === 'left') {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', code: 'KeyA' }))
+            dispatch('keydown', 'a', 'KeyA')
             pressedKeysRef.current.add('a')
           }
           if (dir === 'right') {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', code: 'KeyD' }))
+            dispatch('keydown', 'd', 'KeyD')
             pressedKeysRef.current.add('d')
           }
         }}
         onJump={() => {
-          window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }))
+          const dispatch = (type: 'keydown' | 'keyup', key: string, code: string) => {
+            const event = new KeyboardEvent(type, { key, code, bubbles: true, cancelable: true })
+            document.dispatchEvent(event)
+            window.dispatchEvent(event)
+          };
+          dispatch('keydown', ' ', 'Space')
           pressedKeysRef.current.add(' ')
           setTimeout(() => {
-            window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }))
+            dispatch('keyup', ' ', 'Space')
             pressedKeysRef.current.delete(' ')
           }, 100)
         }}
