@@ -280,15 +280,18 @@ canvas {
 
   .messenger-card,
   .messenger-card-main {
-    width: min(240px, 85vw);
+    width: min(208px, 72vw);
+    padding: 8px 10px 7px;
+    border-radius: 20px;
   }
 
   .messenger-card-small {
-    width: min(220px, 80vw);
+    width: min(188px, 68vw);
   }
 
   .messenger-card p {
-    font-size: 0.82rem;
+    font-size: 0.72rem;
+    line-height: 1.34;
   }
 }
 
@@ -547,6 +550,75 @@ canvas {
   box-shadow: 0 14px 28px rgba(31, 31, 33, 0.18);
   font-family: "Bubblegum Sans", "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
   font-size: 0.86rem;
+}
+
+@media (max-width: 520px) {
+  .mobile-controls {
+    bottom: 12px;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .joystick-pad {
+    width: 94px;
+    height: 94px;
+  }
+
+  .joystick-thumb {
+    width: 36px;
+    height: 36px;
+    margin-left: -18px;
+    margin-top: -18px;
+  }
+
+  .joystick-label {
+    top: 10px;
+    font-size: 0.62rem;
+  }
+
+  .mobile-jump-button {
+    min-width: 62px;
+    height: 62px;
+    font-size: 0.76rem;
+  }
+
+  .messenger-icon-button {
+    width: 48px;
+    height: 48px;
+  }
+
+  .messenger-icon-svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .messenger-card,
+  .messenger-card-main {
+    width: min(182px, 64vw);
+    min-height: 56px;
+    padding: 7px 9px 6px;
+    border-radius: 18px;
+  }
+
+  .messenger-card-small {
+    width: min(166px, 60vw);
+  }
+
+  .messenger-card p {
+    font-size: 0.66rem;
+    line-height: 1.3;
+  }
+
+  .messenger-card-close {
+    top: 5px;
+    right: 7px;
+    font-size: 0.92rem;
+  }
+
+  .messenger-card-text {
+    min-height: 34px;
+    padding-top: 1px;
+  }
 }
 
 @media (min-width: 721px) {
