@@ -1,0 +1,3 @@
+The white screen issue was caused by Vite's default absolute path configuration. When deployed to Netlify, the application sometimes struggles to resolve the absolute file paths (like /assets/...) correctly from the root domain. 
+
+By changing the `base` configuration in `vite.config.ts` from `'/'` to `'./'`, Vite now builds the project using relative paths for all assets. This ensures that the JavaScript, CSS, 3D models, and audio files are resolved correctly relative to the `index.html` file, regardless of the hosting environment or subpath structure.
