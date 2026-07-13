@@ -1,0 +1,550 @@
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
+  background: #dcecf5;
+}
+
+body {
+  color: #14202a;
+}
+
+.scene-shell {
+  width: 100%;
+  height: 100%;
+  transition: filter 280ms ease;
+}
+
+.scene-shell-blur {
+  filter: blur(10px) saturate(0.92);
+}
+
+.brand-badge {
+  position: fixed;
+  top: 20px;
+  left: 22px;
+  z-index: 12;
+  max-width: 280px;
+  color: #ffffff;
+  font-family: "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
+  font-size: clamp(1.55rem, 2.9vw, 2.5rem);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  font-weight: 700;
+  text-shadow:
+    0 3px 0 rgba(58, 58, 62, 0.34),
+    0 12px 24px rgba(31, 31, 33, 0.18);
+  filter: saturate(1.03);
+}
+
+.ui-stack {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ui-icon {
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(54, 54, 56, 0.28);
+  border-radius: 18px;
+  background: rgba(255, 249, 238, 0.92);
+  color: #3d3d3f;
+  box-shadow: 0 10px 24px rgba(38, 38, 40, 0.12);
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", "Comic Sans MS", cursive;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ui-icon-svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  margin: 0 auto;
+}
+
+.ui-icon:last-child {
+  font-size: 0.9rem;
+}
+
+.intro-card,
+.info-card {
+  position: fixed;
+  z-index: 13;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(580px, calc(100vw - 32px));
+  border: 1px solid rgba(61, 61, 63, 0.18);
+  border-radius: 26px;
+  background: rgba(255, 249, 238, 0.96);
+  color: #2f3033;
+  box-shadow: 0 18px 46px rgba(31, 31, 33, 0.16);
+  box-sizing: border-box;
+}
+
+.intro-card {
+  bottom: 22px;
+  padding: 18px 22px;
+  text-align: center;
+}
+
+.intro-card-enter {
+  bottom: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+
+.info-card {
+  top: 88px;
+  padding: 22px 24px 18px;
+}
+
+.intro-card h2,
+.info-card h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1rem, 1.9vw, 1.28rem);
+  line-height: 1.35;
+}
+
+.intro-card p,
+.info-card p {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+
+.info-card p + p {
+  margin-top: 10px;
+}
+
+.info-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: #3d3d3f;
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.enter-now-button {
+  min-width: 160px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #3d3d3f;
+  color: #fffdf8;
+  box-shadow: 0 12px 28px rgba(31, 31, 33, 0.18);
+  font-family: "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.loading-screen {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: #fffdf8;
+  color: #272729;
+}
+
+.loading-title {
+  font-family: "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
+  font-size: clamp(1.8rem, 2.8vw, 2.8rem);
+  letter-spacing: 0.12em;
+}
+
+.loading-track {
+  width: min(420px, 72vw);
+  height: 34px;
+  padding: 4px;
+  border: 3px solid #1f1f21;
+  border-radius: 999px;
+  background: #fffdf8;
+  box-sizing: border-box;
+}
+
+.loading-bar {
+  width: 38%;
+  height: 100%;
+  border-radius: 999px;
+  background: #1f1f21;
+  animation: loading-slide 1.25s ease-in-out infinite;
+}
+
+@keyframes loading-slide {
+  0% {
+    transform: translateX(0%);
+  }
+
+  50% {
+    transform: translateX(145%);
+  }
+
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+canvas {
+  display: block;
+}
+
+.painting-hint {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 249, 238, 0.95);
+  color: #3d3d3f;
+  border: 1px solid rgba(61, 61, 63, 0.16);
+  box-shadow: 0 10px 26px rgba(33, 33, 35, 0.16);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hud-panel {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 252, 246, 0.9);
+  box-shadow: 0 12px 40px rgba(20, 32, 42, 0.1);
+}
+
+.hud-panel p {
+  margin: 0;
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 720px) {
+  .brand-badge {
+    max-width: 180px;
+    font-size: 1.3rem;
+  }
+
+  .ui-stack {
+    top: 16px;
+    right: 16px;
+  }
+
+  .ui-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  .feature-panel {
+    top: auto;
+    left: 16px;
+    bottom: 18px;
+    width: min(92vw, 380px);
+    height: auto;
+    max-height: 72vh;
+    border-radius: 28px;
+    transform: translateX(calc(-100% - 22px));
+  }
+
+  .feature-panel-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-panel-title,
+  .feature-panel-lead,
+  .feature-panel-copy-left,
+  .feature-panel-copy-right {
+    grid-column: 1 / -1;
+    max-width: none;
+    text-align: left;
+    justify-self: start;
+  }
+
+  .messenger-card,
+  .messenger-card-main {
+    width: min(160px, 60vw);
+  }
+
+  .messenger-card-small {
+    width: min(146px, 54vw);
+  }
+}
+
+.messenger-icon-button {
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 249, 238, 0.96);
+  color: #3d3d3f;
+  box-shadow: 0 12px 28px rgba(31, 31, 33, 0.18);
+  cursor: pointer;
+}
+
+.messenger-icon-svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  margin: 0 auto;
+}
+
+.messenger-card {
+  position: relative;
+  width: min(178px, 48vw);
+  min-height: 62px;
+  padding: 8px 10px 7px;
+  border-radius: 22px;
+  background: rgba(255, 249, 238, 0.98);
+  border: 1px solid rgba(61, 61, 63, 0.14);
+  color: #2f3033;
+  box-shadow: 0 18px 42px rgba(31, 31, 33, 0.18);
+}
+
+.messenger-card-small {
+  width: min(160px, 46vw);
+}
+
+.messenger-card-main {
+  width: min(170px, 46vw);
+}
+
+
+.messenger-card-cloud {
+  font-family: "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
+}
+
+.messenger-card p {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.28;
+}
+
+
+.messenger-card p + p {
+  margin-top: 0;
+}
+
+.messenger-card-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: 0;
+  background: transparent;
+  color: #3d3d3f;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.messenger-card-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding-top: 3px;
+  text-align: center;
+}
+
+
+.messenger-line {
+  animation: messenger-fade-in 0.35s ease;
+}
+
+@keyframes messenger-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+.feature-panel {
+  position: fixed;
+  top: 86px;
+  left: 18px;
+  z-index: 14;
+  width: min(46vw, 560px);
+  height: calc(100vh - 122px);
+  padding: 26px 24px 24px;
+  border: 1px solid rgba(61, 61, 63, 0.12);
+  border-radius: 0 30px 30px 0;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 20px 48px rgba(31, 31, 33, 0.16);
+  box-sizing: border-box;
+  overflow: auto;
+  transform: translateX(calc(-100% - 32px));
+  transition: transform 320ms ease;
+}
+
+.feature-panel-open {
+  transform: translateX(0);
+}
+
+.feature-panel-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: 0;
+  background: transparent;
+  color: #3d3d3f;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.feature-panel-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+  align-items: start;
+}
+
+.feature-panel-topic {
+  margin: 0;
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a6a70;
+}
+
+.feature-panel-title {
+  margin: 0;
+  grid-column: 1 / -1;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 0.95;
+  color: #232326;
+  max-width: 10ch;
+}
+
+.feature-panel-lead,
+.feature-panel-copy {
+  margin: 0;
+  color: #34343a;
+  line-height: 1.45;
+}
+
+.feature-panel-lead {
+  grid-column: 1 / 2;
+  font-size: 1.06rem;
+}
+
+.feature-panel-copy-left {
+  grid-column: 2 / 3;
+  align-self: end;
+  font-size: 0.94rem;
+}
+
+.feature-panel-copy-right {
+  grid-column: 1 / -1;
+  justify-self: end;
+  max-width: 22ch;
+  font-size: 1.02rem;
+  text-align: right;
+}
+
+
+
+
+.feature-rock-label {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 249, 238, 0.92);
+  color: #3d3d3f;
+  box-shadow: 0 8px 18px rgba(31, 31, 33, 0.12);
+  font-family: "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.mobile-controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 18px;
+  z-index: 18;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 18px;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.joystick-pad,
+.mobile-jump-button {
+  pointer-events: auto;
+}
+
+.joystick-pad {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  border: 1px solid rgba(61, 61, 63, 0.18);
+  background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.9), rgba(224, 218, 209, 0.92));
+  box-shadow: 0 14px 28px rgba(31, 31, 33, 0.14);
+  touch-action: none;
+}
+
+.joystick-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42px;
+  height: 42px;
+  margin-left: -21px;
+  margin-top: -21px;
+  border-radius: 50%;
+  background: #3d3d3f;
+  box-shadow: 0 8px 20px rgba(31, 31, 33, 0.24);
+}
+
+.joystick-label {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  color: #3d3d3f;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+}
+
+.mobile-jump-button {
+  align-self: center;
+  min-width: 74px;
+  height: 74px;
+  border: 0;
+  border-radius: 50%;
+  background: #3d3d3f;
+  color: #fffdf8;
+  box-shadow: 0 14px 28px rgba(31, 31, 33, 0.18);
+  font-family: "Arial Rounded MT Bold", "Comic Sans MS", "Trebuchet MS", cursive;
+  font-size: 0.86rem;
+}
+
+@media (min-width: 721px) {
+  .mobile-controls {
+    display: none;
+  }
+}
