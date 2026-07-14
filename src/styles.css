@@ -455,7 +455,7 @@ canvas {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: clamp(0.625rem, 2.8vw, 1rem);
+  gap: clamp(0.875rem, 3.2vw, 1.25rem);
   padding: 0 max(1rem, 4vw);
   pointer-events: none;
   box-sizing: border-box;
@@ -475,6 +475,11 @@ canvas {
   background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.9), rgba(224, 218, 209, 0.92));
   box-shadow: 0 14px 28px rgba(31, 31, 33, 0.14);
   touch-action: none;
+}
+
+.joystick-pad-move {
+  width: clamp(6rem, 30vw, 8.5rem);
+  height: clamp(6rem, 30vw, 8.5rem);
 }
 
 .joystick-thumb {

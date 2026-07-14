@@ -81,18 +81,14 @@ const MOBILE_DRAG_PITCH_PER_PIXEL = 0.0018 * MOBILE_DRAG_ROTATION_MULTIPLIER
 function MobileControls({
   visible,
   onMoveChange,
-  onLookChange,
   onJump,
 }: {
   visible: boolean
   onMoveChange: (input: MobilePadInput) => void
-  onLookChange: (input: MobilePadInput) => void
   onJump: () => void
 }) {
   const [moveThumb, setMoveThumb] = useState<MobilePadThumb>({ x: 0, y: 0 })
-  const [lookThumb, setLookThumb] = useState<MobilePadThumb>({ x: 0, y: 0 })
   const movePointerRef = useRef<number | null>(null)
-  const lookPointerRef = useRef<number | null>(null)
 
   const updatePad = (
     event: ReactPointerEvent<HTMLDivElement>,
@@ -118,11 +114,6 @@ function MobileControls({
     onMoveChange({ x: 0, y: 0 })
   }
 
-  const resetLook = () => {
-    lookPointerRef.current = null
-    setLookThumb({ x: 0, y: 0 })
-    onLookChange({ x: 0, y: 0 })
-  }
 
   if (!visible) {
     return null
@@ -131,7 +122,7 @@ function MobileControls({
   return (
     <div className="mobile-controls" data-no-global-dismiss="true">
       <div
-        className="joystick-pad"
+        className="joystick-pad joystick-pad-move"
         onPointerDown={(event) => {
           event.preventDefault()
           movePointerRef.current = event.pointerId
@@ -168,34 +159,6 @@ function MobileControls({
       >
         Jump
       </button>
-
-      <div
-        className="joystick-pad"
-        onPointerDown={(event) => {
-          event.preventDefault()
-          lookPointerRef.current = event.pointerId
-          event.currentTarget.setPointerCapture(event.pointerId)
-          updatePad(event, setLookThumb, onLookChange)
-        }}
-        onPointerMove={(event) => {
-          if (lookPointerRef.current === event.pointerId) {
-            event.preventDefault()
-            updatePad(event, setLookThumb, onLookChange)
-          }
-        }}
-        onPointerUp={(event) => {
-          if (lookPointerRef.current === event.pointerId) {
-            event.currentTarget.releasePointerCapture(event.pointerId)
-            resetLook()
-          }
-        }}
-        onPointerCancel={() => {
-          resetLook()
-        }}
-      >
-        <div className="joystick-label">Turn</div>
-        <div className="joystick-thumb" style={{ transform: `translate(${lookThumb.x}px, ${lookThumb.y}px)` }} />
-      </div>
     </div>
   )
 }
@@ -1646,7 +1609,7 @@ export default function App() {
 
       {hasLoaded && !sceneEntered ? (
         <div className="intro-card intro-card-enter" data-no-global-dismiss="true">
-          <h2>Use (W, A, S, D) to move .</h2>
+          <h2>{isTouchDevice ? 'Use the joystick to move and turn with your hands.' : 'Use (W, A, S, D) to move .'}</h2>
           <p>Enter The Maze Gallery.</p>
           <button className="enter-now-button" type="button" onClick={() => void handleEnterNow()}>
             Enter Now
@@ -1719,7 +1682,6 @@ export default function App() {
       <MobileControls
         visible={hasLoaded && sceneEntered && isTouchDevice && !showHelpCard && !showPixidimworldPanel}
         onMoveChange={applyMobileMove}
-        onLookChange={applyMobileLook}
         onJump={() => {
           if (!interactionEnabledRef.current) {
             return
